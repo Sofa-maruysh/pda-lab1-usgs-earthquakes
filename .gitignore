@@ -1,0 +1,11 @@
+__pycache__/
+.pytest_cache/
+.venv/
+*.pyc
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+data/
+results/
+.ipynb_checkpoints/
+/.idea/
