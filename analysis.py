@@ -1,7 +1,7 @@
 import pandas as pd
-from sqlalchemy import URL, case, create_engine, func, select
+from sqlalchemy import case, func, select
 
-from earthquake_project.models import DB_PATH, PROJECT_DIR, Earthquake
+from earthquake_project.models import DB_PATH, PROJECT_DIR, Earthquake, create_database
 
 RESULTS_DIR = PROJECT_DIR / "results"
 QUERY_TITLES = {
@@ -27,7 +27,7 @@ def pandas_queries(engine):
     )
     events["depth_band"] = pd.cut(
         events["depth_km"], [-float("inf"), 70, 300, float("inf")],
-        labels=["мелкие (<70 км)", "промежуточные (70–300 км)", "глубокие (≥300 км)"],
+        labels=["мелкофокусные (<70 км)", "промежуточные (70–<300 км)", "глубокофокусные (≥300 км)"],
         right=False,
     )
 
@@ -69,7 +69,7 @@ def pandas_queries(engine):
         events.groupby("hour_utc")
         .agg(events=("event_id", "size"), avg_magnitude=("magnitude", "mean"))
         .reset_index()
-        .sort_values("hour_utc")
+        .sort_values(["events", "hour_utc"], ascending=[False, True])
     )
 
     # Сравнение по флагу tsunami
@@ -103,9 +103,9 @@ def sqlalchemy_queries(engine):
         else_="M ≥ 6",
     ).label("magnitude_band")
     depth_band_sql = case(
-        (e.depth_km < 70, "мелкие (<70 км)"),
-        (e.depth_km < 300, "промежуточные (70–300 км)"),
-        else_="глубокие (≥300 км)",
+        (e.depth_km < 70, "мелкофокусные (<70 км)"),
+        (e.depth_km < 300, "промежуточные (70–<300 км)"),
+        else_="глубокофокусные (≥300 км)",
     ).label("depth_band")
 
     # Число событий и магнитуда по дням
@@ -156,7 +156,7 @@ def sqlalchemy_queries(engine):
         select(hour_sql, func.count().label("events"),
                func.avg(e.magnitude).label("avg_magnitude"))
         .group_by(hour_sql)
-        .order_by(hour_sql)
+        .order_by(func.count().desc(), hour_sql)
     )
     with engine.connect() as connection:
         sql_hour = pd.read_sql_query(query, connection)
@@ -198,7 +198,7 @@ def compare_results(pandas_results, sql_results):
 def main():
     if not DB_PATH.exists():
         raise SystemExit("База данных не найдена. Сначала выполните сбор данных.")
-    engine = create_engine(URL.create("sqlite", database=str(DB_PATH)))
+    engine = create_database(DB_PATH)
     try:
         with engine.connect() as connection:
             count = connection.scalar(select(func.count()).select_from(Earthquake))

@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 import scrapy
 
 from earthquake_project.models import DB_PATH, create_database, save_earthquakes
+from earthquake_project.regions import extract_region
 
 
 class EarthquakesSpider(scrapy.Spider):
@@ -70,6 +71,7 @@ class EarthquakesSpider(scrapy.Spider):
                 "latitude": coords[1],
                 "longitude": coords[0],
                 "place": props.get("place"),
+                "region": extract_region(props.get("place")),
                 "network": props.get("net"),
                 "status": props.get("status"),
                 "tsunami": int(props.get("tsunami") or 0),
