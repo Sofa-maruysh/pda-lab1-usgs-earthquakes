@@ -1,0 +1,7 @@
+numpy>=1.26,<3
+pandas>=2.2,<3
+matplotlib>=3.9,<4
+gdown>=5,<6
+ipykernel>=6,<8
+nbformat>=5.10,<6
+nbclient>=0.10,<1
